@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>蜘蛛纸牌</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --cw: 80px; --ch: 112px; --tab-gap: 6px; }
+
+body {
+  background: #1b6b35;
+  background-image: radial-gradient(ellipse at center, #2d8a4e 0%, #1b6b35 70%);
+  min-height: 100vh;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  overflow-x: hidden;
+  user-select: none;
+}
+
+/* ── HEADER ── */
+#header {
+  background: rgba(0,0,0,0.4);
+  padding: 8px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4); flex-wrap: wrap;
+}
+#title { color: #FFD700; font-size: 20px; font-weight: bold; white-space: nowrap; }
+#stats { display: flex; gap: 20px; color: white; font-size: 13px; }
+.stat-item { display: flex; flex-direction: column; align-items: center; }
+.stat-label { opacity: .65; font-size: 10px; text-transform: uppercase; }
+.stat-value { font-weight: 700; font-size: 17px; }
+#controls { display: flex; gap: 8px; font-family: '微软雅黑', 'Microsoft YaHei', sans-serif; }
+
+.btn {
+  padding: 6px 14px; border: none; border-radius: 6px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  transition: filter .15s, transform .1s;
+}
+.btn:hover  { filter: brightness(1.15); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-green  { background: #4caf50; color: #fff; }
+.btn-orange { background: #ff9800; color: #fff; }
+.btn-blue   { background: #2196f3; color: #fff; }
+.btn-cheat  { background: #6a1fa2; color: #fff; }
+.btn-wand   { background: linear-gradient(135deg,#ffd700,#ffaa00); color: #1a1a1a; font-weight: 800; }
+/* Icon + text buttons */
+.btn-icon {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; font-size: 13px;
+  font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;
+}
+.btn-icon svg { flex-shrink: 0; }
+/* Hide cheat button — panel accessible via triple-click on title */
+#btn-cheat { display: none; }
+
+/* ── CHEAT PANEL ── */
+#cheat-wrap { position: relative; }
+#cheat-panel {
+  display: none; position: absolute; top: calc(100% + 8px); right: 0;
+  background: rgba(10,10,14,0.97); border: 1px solid #2a2a3a;
+  border-radius: 12px; padding: 14px 12px; z-index: 600;
+  min-width: 190px; box-shadow: 0 8px 28px rgba(0,0,0,.7);
+  font-family: 'Courier New', monospace;
+}
+#cheat-panel.on { display: block; }
+.cp-title {
+  color: #ff3c3c; font-size: 12px; font-weight: bold; text-align: center;
+  letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase;
+}
+.cp-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 10px; margin-bottom: 6px;
+  background: transparent; border: 1px solid #2a2a3a; border-radius: 7px;
+  color: #00e676; font-family: 'Courier New', monospace; font-size: 13px;
+  cursor: pointer; text-align: left; transition: all .15s;
+}
+.cp-btn:hover  { background: rgba(0,230,118,.1); border-color: #00e676; }
+.cp-btn.active { color: #ffd740; border-color: #ffd740; background: rgba(255,215,64,.08); }
+.cp-btn:last-child { margin-bottom: 0; }
+.cp-sep { border: none; border-top: 1px solid #2a2a3a; margin: 8px 0; }
+.cp-speed {
+  color: #888; font-size: 11px; margin-top: 4px; display: flex;
+  align-items: center; gap: 6px;
+}
+.cp-speed label { color: #00e676; }
+.speed-slider {
+  width: 100%; margin-top: 4px; accent-color: #00e676;
+}
+
+/* ── GAME ── */
+#game-area { padding: 10px 12px; overflow-x: auto; overflow-y: auto; }
+#tableau   { display: flex; gap: var(--tab-gap); align-items: flex-start; min-width: 830px; }
+
+/* ── COLUMNS ── */
+.col { position: relative; width: var(--cw); flex-shrink: 0; min-height: var(--ch); }
+.col-ph {
+  position: absolute; top: 0; left: 0; width: var(--cw); height: var(--ch);
+  border: 2px dashed rgba(255,255,255,0.22); border-radius: 8px;
+  transition: border-color .2s, border-style .2s;
+}
+
+/* ── CARDS ── */
+.card {
+  position: absolute; width: var(--cw); height: var(--ch); border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.18);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  will-change: transform;
+}
+.card.face-down {
+  background: #1a3a8c;
+  background-image:
+    repeating-linear-gradient(45deg,  transparent, transparent 4px, rgba(255,255,255,.04) 4px, rgba(255,255,255,.04) 8px),
+    repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(255,255,255,.04) 4px, rgba(255,255,255,.04) 8px);
+}
+.card.face-up { background: #fff; cursor: grab; }
+.card.face-up:active { cursor: grabbing; }
+.card.dim        { opacity: .3; pointer-events: none; }
+.card.glow       { box-shadow: 0 0 0 3px #ffd700, 0 4px 14px rgba(0,0,0,.5); }
+/* Moveable same-suit consecutive sequence at the bottom of a column */
+.card.seq-card   { box-shadow: 0 2px 6px rgba(0,0,0,0.35), 0 0 0 2px rgba(80,210,130,0.55); }
+/* Cards that cannot be moved (face-down or face-up but blocked) */
+.card.locked-card { opacity: 0.45; }
+
+/* Card internals */
+.card-inner { width:100%; height:100%; display:flex; flex-direction:column; padding:4px 5px; }
+.corner { display:flex; flex-direction:column; line-height:1; }
+.corner.bot { margin-top:auto; transform:rotate(180deg); align-self:flex-end; }
+.rk  { font-size:16px; font-weight:700; line-height:1; }
+.su  { font-size:13px; line-height:1; }
+.mid { flex:1; display:flex; align-items:center; justify-content:center; font-size:38px; }
+.red   { color: #cc0000; }
+.black { color: #111; }
+
+/* ── X-RAY CARDS ── */
+.card.xray-card {
+  opacity: 0.52;
+  filter: hue-rotate(195deg) saturate(0.6) brightness(0.9);
+  pointer-events: none; cursor: default !important;
+  border: 1px dashed rgba(100,180,255,0.5);
+}
+
+/* ── ANIMATIONS ── */
+@keyframes slotPop {
+  0%   { transform: scale(0.2) rotate(-10deg); opacity: 0; }
+  65%  { transform: scale(1.15) rotate(3deg);  opacity: 1; }
+  100% { transform: scale(1)    rotate(0deg); }
+}
+
+@keyframes cardPulse {
+  0%,100% { box-shadow: 0 0 0 3px #ffd700; }
+  50%     { box-shadow: 0 0 0 6px #ffd700, 0 0 26px rgba(255,215,0,0.75); transform: scale(1.05); }
+}
+.card-pulse  { animation: cardPulse 0.45s ease-in-out infinite; z-index: 40 !important; }
+.card-hidden { opacity: 0 !important; pointer-events: none; }
+
+/* ── STOCK ROW ── */
+#stock-row {
+  display: flex; justify-content: flex-end; align-items: center;
+  margin-top: 14px; padding: 0 2px; min-width: 830px;
+}
+
+/* ── COMPLETED ROW (bottom) ── */
+#completed-row {
+  display: flex; justify-content: center; align-items: center;
+  margin-top: 18px; padding: 12px 0 14px;
+  min-width: 830px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+#completed-piles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.cslot {
+  width: var(--cw); height: var(--ch); border-radius: 8px;
+  border: 2px dashed rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.3); font-size: 12px; background: rgba(0,0,0,.12);
+}
+.cslot.done {
+  background: rgba(0,0,0,.3); border: 2px solid rgba(255,215,0,.55);
+  font-size: 40px; color: #fff;
+}
+
+/* ── STOCK ── */
+#stock-wrap { position: relative; }
+#stock-pile {
+  width: var(--cw); height: var(--ch); border-radius: 8px; cursor: pointer;
+  background: #1a3a8c;
+  background-image: repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,.04) 4px,rgba(255,255,255,.04) 8px);
+  border: 2px solid rgba(255,255,255,.25);
+  box-shadow: 0 3px 8px rgba(0,0,0,.4);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  transition: border-color .15s, box-shadow .15s;
+  touch-action: manipulation;
+}
+#stock-pile:hover { border-color: rgba(255,215,0,.7); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+#stock-pile .sicon { font-size: 30px; }
+#stock-pile .scnt  { color: rgba(255,255,255,.85); font-size: 12px; font-weight: 700; }
+#stock-empty { width: var(--cw); height: var(--ch); border: 2px dashed rgba(255,255,255,.12); border-radius: 8px; }
+
+/* ── DRAG GHOST ── */
+#ghost { position: fixed; pointer-events: none; z-index: 9999; display: none; }
+#ghost .card { position: absolute !important; box-shadow: 0 8px 22px rgba(0,0,0,.55); }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.82); color: #fff; padding: 10px 22px;
+  border-radius: 8px; font-size: 14px; z-index: 8000;
+  opacity: 0; transition: opacity .25s; pointer-events: none;
+}
+#toast.show { opacity: 1; }
+
+/* ── MODALS ── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+.overlay.on { opacity: 1; pointer-events: all; }
+.modal-box {
+  background: linear-gradient(160deg,#1e6b38,#2d8a4e);
+  border-radius: 16px; padding: 32px; color: #fff; text-align: center;
+  box-shadow: 0 16px 48px rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.15); min-width: 320px;
+}
+.modal-box h2 { font-size: 28px; margin-bottom: 8px; }
+.modal-box p  { opacity: .85; margin-bottom: 22px; }
+.diff-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.dbtn {
+  padding: 12px 20px; border-radius: 10px; border: none; cursor: pointer;
+  font-size: 15px; font-weight: 700; transition: filter .15s, transform .12s; min-width: 88px;
+}
+.dbtn:hover { filter: brightness(1.12); transform: translateY(-2px); }
+.dbtn small { display: block; font-size: 11px; font-weight: normal; margin-top: 3px; opacity: .85; }
+.d1 { background: #4caf50; color: #fff; }
+.d2 { background: #ff9800; color: #fff; }
+.d4 { background: #f44336; color: #fff; }
+
+/* ── WIN ── */
+#win-overlay {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  z-index: 200; opacity: 0; pointer-events: none; transition: opacity .4s; background: rgba(0,0,0,.7);
+}
+#win-overlay.on { opacity: 1; pointer-events: all; }
+#win-box {
+  background: linear-gradient(135deg,#0d5c2a,#1a8a46);
+  border: 3px solid #ffd700; border-radius: 20px; padding: 40px 48px; color: #fff; text-align: center;
+  box-shadow: 0 0 60px rgba(255,215,0,.4), 0 20px 60px rgba(0,0,0,.6);
+}
+#win-box h2 { font-size: 36px; color: #ffd700; }
+#win-box p  { margin: 10px 0 20px; opacity: .9; }
+.score-row  { display: flex; justify-content: center; gap: 28px; margin: 12px 0 24px; }
+.si { text-align: center; }
+.sn { font-size: 30px; font-weight: 700; color: #ffd700; }
+.sl { font-size: 12px; opacity: .75; }
+
+/* ── CONFETTI ── */
+.confetti {
+  position: fixed; pointer-events: none; z-index: 150;
+  animation: cfall linear forwards;
+}
+@keyframes cfall {
+  0%   { opacity: 1; transform: translateY(-30px) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(110vh)  rotate(720deg); }
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,.15); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
+
+/* ── TOUCH ── */
+.btn, .dbtn { touch-action: manipulation; }
+.card.face-up { touch-action: none; } /* allow our touch handlers to fire */
+
+/* ── MOBILE ── */
+@media (max-width: 600px) {
+  #header { padding: 6px 10px; gap: 6px; flex-wrap: wrap; }
+  #title  { font-size: 15px; }
+  #stats  { gap: 10px; }
+  .stat-value { font-size: 14px; }
+  .stat-label { font-size: 9px; }
+  #controls { gap: 5px; }
+  .btn        { padding: 5px 9px; font-size: 12px; }
+  .btn-icon   { gap: 3px; padding: 5px 8px; }
+  .btn-icon svg { width: 13px; height: 13px; }
+
+  #game-area  { padding: 6px 6px; }
+  #tableau    { min-width: unset; }
+  #stock-row  { min-width: unset; margin-top: 8px; }
+  #completed-row { min-width: unset; margin-top: 10px; padding: 8px 0 10px; }
+  #completed-piles { gap: 4px; }
+  .cslot.done { font-size: 28px; }
+  #stock-pile .sicon { font-size: 22px; }
+  #stock-pile .scnt  { font-size: 10px; }
+
+  .rk  { font-size: 11px; }
+  .su  { font-size: 8px; }
+  .mid { font-size: 22px; }
+  .card-inner { padding: 2px 3px; }
+
+  .modal-box  { padding: 24px 20px; min-width: unset; margin: 0 16px; }
+  .modal-box h2 { font-size: 22px; }
+  .dbtn { padding: 10px 14px; font-size: 13px; min-width: 76px; }
+  #win-box { padding: 28px 24px; margin: 0 16px; }
+  #win-box h2 { font-size: 26px; }
+  .sn  { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="title">🕷 蜘蛛纸牌</div>
+  <div id="stats">
+    <div class="stat-item"><span class="stat-label">移动</span><span class="stat-value" id="s-moves">0</span></div>
+    <div class="stat-item"><span class="stat-label">完成</span><span class="stat-value" id="s-done">0/8</span></div>
+    <div class="stat-item"><span class="stat-label">时间</span><span class="stat-value" id="s-time">00:00</span></div>
+  </div>
+  <div id="controls">
+    <button class="btn btn-wand btn-icon" id="btn-wand" onclick="extractSequence()" title="魔棒：抽出同花色 A→K">🪄 魔棒</button>
+    <div id="cheat-wrap">
+      <button class="btn btn-cheat" id="btn-cheat">💀 作弊</button>
+      <div id="cheat-panel">
+        <div class="cp-title">⚠ 作弊器 ⚠</div>
+        <button class="cp-btn" id="cp-xray"  onclick="toggleXray()">👁 透视牌</button>
+        <button class="cp-btn" id="cp-auto"  onclick="toggleAutoPlay()">🤖 自动走棋</button>
+        <button class="cp-btn" id="cp-mega"  onclick="toggleMega()">🃏 抽牌整理</button>
+        <div class="cp-speed" id="cp-speed-row">
+          <label>速度</label>
+          <input type="range" class="speed-slider" id="speed-slider" min="1" max="5" value="3">
+        </div>
+        <hr class="cp-sep">
+        <button class="cp-btn" id="cp-win"   onclick="instantWin()">🏆 直接胜利</button>
+      </div>
+    </div>
+    <button class="btn btn-blue   btn-icon" id="btn-hint" title="提示">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z"/>
+      </svg>
+      提示
+    </button>
+    <button class="btn btn-orange btn-icon" id="btn-undo" title="撤回">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9h13a5 5 0 0 1 0 10H8"/>
+        <polyline points="7 5 3 9 7 13"/>
+      </svg>
+      撤回
+    </button>
+    <button class="btn btn-green"  id="btn-new" >新游戏</button>
+  </div>
+</div>
+
+<div id="game-area">
+  <div id="tableau"></div>
+  <div id="stock-row">
+    <div id="stock-wrap"><div id="stock-empty"></div></div>
+  </div>
+  <div id="completed-row">
+    <div id="completed-piles"></div>
+  </div>
+</div>
+
+<div id="ghost"></div>
+<div id="toast"></div>
+
+<div class="overlay on" id="modal-ng">
+  <div class="modal-box">
+    <h2>🕷 蜘蛛纸牌</h2>
+    <p>请选择游戏难度</p>
+    <div class="diff-row">
+      <button class="dbtn d1" onclick="startGame(1)">简单<small>1种花色</small></button>
+      <button class="dbtn d2" onclick="startGame(2)">中等<small>2种花色</small></button>
+      <button class="dbtn d4" onclick="startGame(4)">困难<small>4种花色</small></button>
+    </div>
+  </div>
+</div>
+
+<div id="win-overlay">
+  <div id="win-box">
+    <h2>🎉 恭喜获胜！</h2>
+    <p>你完成了所有 8 组牌序！</p>
+    <div class="score-row">
+      <div class="si"><div class="sn" id="w-moves">0</div><div class="sl">移动次数</div></div>
+      <div class="si"><div class="sn" id="w-time">0:00</div><div class="sl">用时</div></div>
+    </div>
+    <button class="btn btn-green" style="font-size:16px;padding:12px 28px" onclick="showNG()">再来一局</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════
+const RANK_STR  = ['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const RED_SUITS = new Set(['♥','♦']);
+const NCOLS = 10;
+let CW = 80, CH = 112, FD_OFF = 18, FU_OFF = 28;
+
+function calcDims() {
+  const pad  = 24; // #game-area left+right padding
+  const avail = window.innerWidth - pad;
+  const isMobile = window.innerWidth <= 600;
+  const gap  = isMobile ? 3 : 6;
+  CW = Math.min(80, Math.max(28, Math.floor((avail - (NCOLS - 1) * gap) / NCOLS)));
+  CH = Math.round(CW * 1.4);
+  FD_OFF = Math.max(6,  Math.round(CW * 0.22));
+  FU_OFF = Math.max(12, Math.round(CW * 0.34));
+  const root = document.documentElement.style;
+  root.setProperty('--cw', CW + 'px');
+  root.setProperty('--ch', CH + 'px');
+  root.setProperty('--tab-gap', gap + 'px');
+}
+
+// ════════════════════════════════════
+//  STATE
+// ════════════════════════════════════
+let G = { tableau:[], stock:[], done:[], moves:0, hist:[], numSuits:1, t0:0, tid:null, justCompleted:false };
+
+// ════════════════════════════════════
+//  DRAG
+// ════════════════════════════════════
+let D = { on:false, fc:-1, fi:-1, cards:[], ox:0, oy:0, startX:0, startY:0 };
+
+// ════════════════════════════════════
+//  ANIMATION STATE
+// ════════════════════════════════════
+let animFlipped = new Set(); // card IDs newly flipped face-up
+let cardCounter = 0;
+
+// ════════════════════════════════════
+//  CHEAT STATE
+// ════════════════════════════════════
+let xray        = false;
+let autoPlaying = false;
+let autoTimer   = null;
+let megaActive  = false;
+let megaTimer   = null;
+
+// ════════════════════════════════════
+//  DECK
+// ════════════════════════════════════
+function buildDeck(ns) {
+  const map = { 1:['♠','♠','♠','♠'], 2:['♠','♥','♠','♥'], 4:['♠','♥','♦','♣'] };
+  const suits = map[ns];
+  const deck = [];
+  for (let d=0; d<2; d++)
+    for (let si=0; si<4; si++)
+      for (let r=1; r<=13; r++)
+        deck.push({ suit:suits[si], rank:r, faceUp:false, id:`c${++cardCounter}` });
+  return deck;
+}
+
+function shuffle(a) {
+  for (let i=a.length-1; i>0; i--) {
+    const j = (Math.random()*(i+1))|0;
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+// ════════════════════════════════════
+//  INIT
+// ════════════════════════════════════
+function startGame(ns) {
+  calcDims();
+  stopAutoPlay();
+  stopMega();
+  xray = false;
+  if (G.tid) clearInterval(G.tid);
+  G = { tableau:[], stock:[], done:[], moves:0, hist:[], numSuits:ns, t0:Date.now(), tid:null, justCompleted:false };
+
+  const deck = shuffle(buildDeck(ns));
+  let idx = 0;
+  for (let c=0; c<NCOLS; c++) {
+    const n = c<4 ? 6 : 5, col = [];
+    for (let i=0; i<n; i++) col.push({...deck[idx++], faceUp:false});
+    col[col.length-1].faceUp = true;
+    G.tableau.push(col);
+  }
+  while (idx < deck.length) {
+    const g = [];
+    for (let i=0; i<10 && idx<deck.length; i++) g.push({...deck[idx++]});
+    G.stock.push(g);
+  }
+
+  G.tid = setInterval(tick, 1000);
+  hide('modal-ng'); hide('win-overlay');
+  render();
+}
+
+// ════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════
+function render() { renderTableau(); renderStock(); renderDone(); renderStats(); }
+
+function renderTableau() {
+  const el = document.getElementById('tableau');
+  el.innerHTML = '';
+  G.tableau.forEach((col, ci) => {
+    const div = document.createElement('div');
+    div.className = 'col'; div.dataset.col = ci;
+    const ph = document.createElement('div'); ph.className = 'col-ph'; div.appendChild(ph);
+
+    const nFU = col.filter(c=>c.faceUp).length, nFD = col.length - nFU;
+    const avail = window.innerHeight - 240;
+    let fuOff = FU_OFF;
+    if (nFU > 1) {
+      const need = nFD*FD_OFF + (nFU-1)*FU_OFF + CH;
+      if (need > avail) fuOff = Math.max(15, Math.floor((avail-nFD*FD_OFF-CH)/(nFU-1)));
+    }
+
+    let top = 0;
+    col.forEach((card, ci2) => {
+      div.appendChild(makeCard(card, ci, ci2, top));
+      top += card.faceUp ? fuOff : FD_OFF;
+    });
+
+    const h = col.length === 0 ? CH : (top - (col[col.length-1].faceUp ? fuOff : FD_OFF) + CH);
+    div.style.height = h + 'px';
+    div.addEventListener('mouseenter', colEnter);
+    div.addEventListener('mouseleave', colLeave);
+    el.appendChild(div);
+  });
+}
+
+// Returns the index where the bottom same-suit consecutive face-up sequence begins.
+// Cards from seqStart..end are all moveable as a group (or individually).
+function getSeqStart(col) {
+  if (!col.length || !col[col.length - 1].faceUp) return col.length; // no face-up bottom card
+  let i = col.length - 1;
+  while (i > 0 && col[i-1].faceUp
+         && col[i-1].suit === col[i].suit
+         && col[i-1].rank === col[i].rank + 1) {
+    i--;
+  }
+  return i;
+}
+
+function makeCard(card, ci, ci2, top) {
+  const el = document.createElement('div');
+  el.style.top = top + 'px';
+  el.dataset.col = ci; el.dataset.idx = ci2; el.dataset.id = card.id;
+
+  const col     = G.tableau[ci];
+  const seqStart = getSeqStart(col);
+  const inSeq    = card.faceUp && ci2 >= seqStart;
+
+  const showFace = card.faceUp || xray;
+  if (showFace) {
+    let className = 'card face-up';
+    if (!card.faceUp) {
+      className += ' xray-card';          // x-ray: shown but not interactive
+    } else if (inSeq) {
+      className += ' seq-card';           // in moveable sequence → highlight
+    } else {
+      className += ' locked-card';        // face-up but stuck → dim
+    }
+    el.className = className;
+    const cls = RED_SUITS.has(card.suit) ? 'red' : 'black';
+    const r   = RANK_STR[card.rank];
+    el.innerHTML = `<div class="card-inner">
+  <div class="corner"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
+  <div class="mid ${cls}">${card.suit}</div>
+  <div class="corner bot"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
+</div>`;
+    if (card.faceUp) {
+      el.addEventListener('mousedown',  e => dragStart(e, ci, ci2));
+      el.addEventListener('touchstart', e => dragStart(e, ci, ci2), { passive: false });
+    }
+  } else {
+    el.className = 'card face-down locked-card'; // face-down → always locked
+  }
+  return el;
+}
+
+function renderStock() {
+  const w = document.getElementById('stock-wrap'); w.innerHTML = '';
+  if (G.stock.length > 0) {
+    const p = document.createElement('div'); p.id = 'stock-pile';
+    p.innerHTML = `<span class="sicon">🂠</span><span class="scnt">${G.stock.length*10} 张</span>`;
+    p.addEventListener('click', dealStock);
+    w.appendChild(p);
+  } else {
+    const e = document.createElement('div'); e.id = 'stock-empty'; w.appendChild(e);
+  }
+}
+
+function renderDone() {
+  const a = document.getElementById('completed-piles'); a.innerHTML = '';
+  for (let i=0; i<8; i++) {
+    const s = document.createElement('div');
+    s.className = 'cslot' + (i < G.done.length ? ' done' : '');
+    s.textContent = i < G.done.length ? G.done[i] : '';
+    a.appendChild(s);
+  }
+  // Animate the newest completed slot
+  if (G.justCompleted && G.done.length > 0) {
+    G.justCompleted = false;
+    const slots = a.querySelectorAll('.cslot.done');
+    const newest = slots[slots.length - 1];
+    if (newest) {
+      newest.style.animation = 'slotPop 0.5s ease-out';
+      newest.addEventListener('animationend', () => newest.style.animation = '', {once:true});
+    }
+  }
+}
+
+function renderStats() {
+  document.getElementById('s-moves').textContent = G.moves;
+  document.getElementById('s-done').textContent  = G.done.length + '/8';
+}
+
+// ════════════════════════════════════
+//  TIMER
+// ════════════════════════════════════
+function tick() {
+  const e = ((Date.now() - G.t0) / 1000) | 0;
+  document.getElementById('s-time').textContent =
+    String((e/60)|0).padStart(2,'0') + ':' + String(e%60).padStart(2,'0');
+}
+
+// ════════════════════════════════════
+//  DRAG  (mouse + touch)
+// ════════════════════════════════════
+function evtXY(e) {
+  const t = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
+  return { x: t.clientX, y: t.clientY };
+}
+
+function dragStart(e, ci, ci2) {
+  if (!e.touches && e.button !== 0) return;
+  e.preventDefault();
+  const col = G.tableau[ci], cards = col.slice(ci2);
+  if (!draggable(cards)) return;
+
+  const { x, y } = evtXY(e);
+  D = { on:true, fc:ci, fi:ci2, cards, ox:0, oy:0, startX:x, startY:y, isTouch: !!e.touches };
+  const rect = e.currentTarget.getBoundingClientRect();
+  D.ox = x - rect.left; D.oy = y - rect.top;
+
+  buildGhost(cards); moveGhost(x, y);
+  markDim(true);
+  if (e.touches) {
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend',  onUp);
+  } else {
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  }
+}
+
+function onMove(e) {
+  if (!D.on) return;
+  if (e.touches) e.preventDefault();
+  const { x, y } = evtXY(e);
+  moveGhost(x, y);
+}
+
+function onUp(e) {
+  if (!D.on) return;
+  document.removeEventListener('mousemove', onMove);
+  document.removeEventListener('mouseup',   onUp);
+  document.removeEventListener('touchmove', onMove);
+  document.removeEventListener('touchend',  onUp);
+  hideGhost();
+
+  const { x, y } = evtXY(e);
+  const dx = x - D.startX, dy = y - D.startY;
+  const wasDrag = Math.sqrt(dx*dx + dy*dy) > 8;
+
+  // Capture current DOM positions before any state change
+  const before = capturePositions();
+  animFlipped.clear();
+
+  let moved = false;
+  if (!wasDrag) {
+    // ── SINGLE CLICK: auto-move to best destination ──
+    const tc = findBestDest(D.fc, D.fi);
+    if (tc !== -1) { doMove(D.fc, D.fi, tc); moved = true; }
+  } else {
+    // ── DRAG: drop onto hovered column ──
+    const tc = colAt(x, y);
+    if (tc !== null && tc !== D.fc) { doMove(D.fc, D.fi, tc); moved = true; }
+  }
+
+  D.on = false;
+  render();
+
+  if (moved) {
+    animateMoveCards(before);
+  }
+  animFlipped.clear();
+}
+
+// ════════════════════════════════════
+//  AUTO-MOVE LOGIC
+// ════════════════════════════════════
+function findBestDest(ci, ci2) {
+  const col = G.tableau[ci], cards = col.slice(ci2);
+  if (!draggable(cards)) return -1;
+  let best = -1, bestSame = false;
+  for (let tc=0; tc<NCOLS; tc++) {
+    if (tc === ci) continue;
+    const dst = G.tableau[tc];
+    const top = dst.length > 0 ? dst[dst.length-1] : null;
+    if (top === null || top.rank === cards[0].rank + 1) {
+      const same = top !== null && top.suit === cards[0].suit;
+      if (best === -1 || (same && !bestSame)) { best = tc; bestSame = same; }
+    }
+  }
+  return best;
+}
+
+// ════════════════════════════════════
+//  COLUMN HOVER HIGHLIGHT
+// ════════════════════════════════════
+function colEnter() {
+  if (!D.on) return;
+  const tc  = parseInt(this.dataset.col);
+  const dst = G.tableau[tc], top = dst.length > 0 ? dst[dst.length-1] : null;
+  if (tc !== D.fc && (top === null || top.rank === D.cards[0].rank + 1))
+    this.style.background = 'rgba(255,215,0,.15)';
+}
+function colLeave() { this.style.background = ''; }
+
+// ════════════════════════════════════
+//  GHOST
+// ════════════════════════════════════
+function buildGhost(cards) {
+  const g = document.getElementById('ghost'); g.innerHTML = '';
+  cards.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'card face-up';
+    el.style.cssText = `position:absolute;top:${i*FU_OFF}px;left:0;opacity:.92;`;
+    const cls = RED_SUITS.has(card.suit) ? 'red' : 'black';
+    const r   = RANK_STR[card.rank];
+    el.innerHTML = `<div class="card-inner">
+  <div class="corner"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
+  <div class="mid ${cls}">${card.suit}</div>
+  <div class="corner bot"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
+</div>`;
+    g.appendChild(el);
+  });
+  g.style.cssText = `position:fixed;pointer-events:none;z-index:9999;display:block;width:${CW}px;height:${(cards.length-1)*FU_OFF+CH}px;`;
+}
+function moveGhost(x, y) {
+  const g = document.getElementById('ghost');
+  g.style.left = (x - D.ox) + 'px'; g.style.top = (y - D.oy) + 'px';
+}
+function hideGhost() { document.getElementById('ghost').style.display = 'none'; }
+
+function markDim(on) {
+  document.querySelectorAll(`.card[data-col="${D.fc}"]`).forEach(el => {
+    if (parseInt(el.dataset.idx) >= D.fi) el.classList.toggle('dim', on);
+  });
+}
+
+// ════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════
+function draggable(cards) {
+  if (cards.length === 1) return true;
+  for (let i=0; i<cards.length-1; i++) {
+    if (!cards[i].faceUp || !cards[i+1].faceUp) return false;
+    if (cards[i].suit  !== cards[i+1].suit)      return false;
+    if (cards[i].rank  !== cards[i+1].rank + 1)  return false;
+  }
+  return true;
+}
+
+function colAt(x, y) {
+  for (const c of document.querySelectorAll('.col')) {
+    const r = c.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top) return parseInt(c.dataset.col);
+  }
+  return null;
+}
+
+function snapshot() {
+  return {
+    tableau: G.tableau.map(c => c.map(x => ({...x}))),
+    stock:   G.stock.map(g => g.map(x => ({...x}))),
+    done:    [...G.done],
+    moves:   G.moves
+  };
+}
+function restore(s) { G.tableau = s.tableau; G.stock = s.stock; G.done = s.done; G.moves = s.moves; }
+
+function flipTop(ci) {
+  const col = G.tableau[ci];
+  if (col.length > 0 && !col[col.length-1].faceUp) {
+    col[col.length-1].faceUp = true;
+    animFlipped.add(col[col.length-1].id); // track for animation
+  }
+}
+
+// ════════════════════════════════════
+//  MOVE LOGIC
+// ════════════════════════════════════
+function doMove(fc, fi, tc) {
+  const src = G.tableau[fc], dst = G.tableau[tc];
+  const mov = src.slice(fi);
+  const dTop = dst.length > 0 ? dst[dst.length-1] : null;
+  if (dTop !== null && dTop.rank !== mov[0].rank + 1) return false;
+
+  G.hist.push(snapshot());
+  if (G.hist.length > 120) G.hist.shift();
+
+  G.tableau[fc] = src.slice(0, fi);
+  G.tableau[tc] = [...dst, ...mov];
+  flipTop(fc);
+  G.moves++;
+  checkSeq(tc);
+  return true;
+}
+
+function checkSeq(ci) {
+  const col = G.tableau[ci];
+  if (col.length < 13) return;
+  const top13 = col.slice(-13), s = top13[0].suit;
+  for (let i=0; i<13; i++) {
+    if (!top13[i].faceUp || top13[i].suit !== s || top13[i].rank !== 13-i) return;
+  }
+  G.tableau[ci] = col.slice(0, -13);
+  flipTop(ci);
+  G.done.push(s);
+  G.justCompleted = true;
+  flashCol(ci);
+  if (G.done.length === 8) setTimeout(showWin, 600);
+}
+
+// ════════════════════════════════════
+//  DEAL FROM STOCK
+// ════════════════════════════════════
+function dealStock() {
+  if (G.stock.length === 0) return;
+  const stockEl  = document.getElementById('stock-pile');
+  const stockRect = stockEl ? stockEl.getBoundingClientRect() : null;
+
+  G.hist.push(snapshot());
+  const grp = G.stock.pop();
+  const dealtIds = [];
+  grp.forEach((card, i) => {
+    card.faceUp = true;
+    G.tableau[i].push(card);
+    dealtIds.push(card.id);
+  });
+  G.moves++;
+  for (let c=0; c<NCOLS; c++) checkSeq(c);
+
+  render();
+  if (stockRect) animateDeal(dealtIds, stockRect);
+}
+
+// ════════════════════════════════════
+//  UNDO
+// ════════════════════════════════════
+function doUndo() {
+  if (!G.hist.length) return;
+  restore(G.hist.pop()); render();
+}
+
+// ════════════════════════════════════
+//  HINT
+// ════════════════════════════════════
+function doHint() {
+  clearGlow();
+  const mv = bestMove();
+  if (!mv) {
+    toast('没有可移动的牌，请点击发牌堆！');
+    const sp = document.getElementById('stock-pile');
+    if (sp) { sp.style.borderColor = '#ffd700'; setTimeout(() => sp.style.borderColor = '', 2000); }
+    return;
+  }
+  glowCard(mv.fc, mv.fi);
+  const dst = G.tableau[mv.tc];
+  if (dst.length > 0) glowCard(mv.tc, dst.length-1);
+  else {
+    const col = document.querySelector(`.col[data-col="${mv.tc}"]`);
+    if (col) { const ph = col.querySelector('.col-ph'); if(ph){ph.style.borderColor='#ffd700';ph.style.borderStyle='solid';} }
+  }
+  setTimeout(clearGlow, 2500);
+}
+
+function bestMove() {
+  let best = null, score = -1;
+  for (let fc=0; fc<NCOLS; fc++) {
+    const col = G.tableau[fc]; if (!col.length) continue;
+    let fi = col.length - 1;
+    while (fi>0 && col[fi-1].faceUp && col[fi-1].suit===col[fi].suit && col[fi-1].rank===col[fi].rank+1) fi--;
+    const top = col[fi];
+    for (let tc=0; tc<NCOLS; tc++) {
+      if (tc === fc) continue;
+      const dst = G.tableau[tc], dTop = dst.length>0 ? dst[dst.length-1] : null;
+      if (dTop === null || dTop.rank === top.rank+1) {
+        const same = dTop !== null && dTop.suit === top.suit;
+        const s = (same?2:0) + (dTop?1:0);
+        if (s > score) { score = s; best = {fc, fi, tc}; }
+      }
+    }
+  }
+  return best;
+}
+
+function glowCard(ci, ci2) {
+  const el = document.querySelector(`.card[data-col="${ci}"][data-idx="${ci2}"]`);
+  if (el) el.classList.add('glow');
+}
+function clearGlow() {
+  document.querySelectorAll('.glow').forEach(e => e.classList.remove('glow'));
+  document.querySelectorAll('.col-ph').forEach(e => { e.style.borderColor=''; e.style.borderStyle=''; });
+}
+
+// ════════════════════════════════════
+//  ANIMATIONS
+// ════════════════════════════════════
+
+// Snapshot all card positions by card ID (before render)
+function capturePositions() {
+  const pos = {};
+  document.querySelectorAll('.card[data-id]').forEach(el => {
+    const r = el.getBoundingClientRect();
+    pos[el.dataset.id] = { left: r.left, top: r.top };
+  });
+  return pos;
+}
+
+// FLIP technique: cards slide from old position to new position
+function animateMoveCards(before) {
+  document.querySelectorAll('.card[data-id]').forEach(el => {
+    const b = before[el.dataset.id]; if (!b) return;
+    const r = el.getBoundingClientRect();
+    const dx = b.left - r.left, dy = b.top - r.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+
+    el.style.zIndex     = '30';
+    el.style.transform  = `translate(${dx}px,${dy}px)`;
+    el.style.transition = 'none';
+    // Double rAF ensures the browser commits the initial transform first
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.transition = 'transform 0.28s ease-out';
+      el.style.transform  = '';
+      setTimeout(() => { el.style.zIndex = ''; el.style.transition = ''; }, 320);
+    }));
+  });
+}
+
+// 3-D flip reveal for cards newly turned face-up
+function animateFlip(ids) {
+  ids.forEach(id => {
+    const el = document.querySelector(`.card[data-id="${id}"]`);
+    if (el && el.classList.contains('face-up')) {
+      el.classList.add('flip-in');
+      el.addEventListener('animationend', () => el.classList.remove('flip-in'), {once:true});
+    }
+  });
+}
+
+// Cards fly from stock pile to their column positions
+function animateDeal(ids, stockRect) {
+  ids.forEach((id, i) => {
+    const el = document.querySelector(`.card[data-id="${id}"]`); if (!el) return;
+    const r  = el.getBoundingClientRect();
+    const dx = stockRect.left - r.left, dy = stockRect.top - r.top;
+    el.style.transform  = `translate(${dx}px,${dy}px)`;
+    el.style.zIndex     = `${50 + i}`;
+    el.style.transition = 'none';
+    setTimeout(() => {
+      el.style.transition = 'transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94)';
+      el.style.transform  = '';
+      setTimeout(() => { el.style.zIndex = ''; el.style.transition = ''; }, 360);
+    }, i * 40 + 10);
+  });
+}
+
+// ════════════════════════════════════
+//  VISUAL EFFECTS
+// ════════════════════════════════════
+function flashCol(ci) {
+  const el = document.querySelector(`.col[data-col="${ci}"]`); if (!el) return;
+  el.style.transition = 'background .15s'; el.style.background = 'rgba(255,215,0,.28)';
+  setTimeout(() => el.style.background = '', 600);
+}
+
+function confetti() {
+  const emojis = ['🎉','⭐','🌟','✨','🏆','🎊','💫','🃏','♠','♥'];
+  for (let i=0; i<35; i++) setTimeout(() => {
+    const p = document.createElement('div'); p.className = 'confetti';
+    p.textContent = emojis[Math.random()*emojis.length|0];
+    p.style.cssText = `left:${Math.random()*100}vw;top:-40px;font-size:${20+Math.random()*16}px;animation-duration:${1.5+Math.random()*2}s;`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3500);
+  }, i * 70);
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast'); el.textContent = msg;
+  el.classList.add('show'); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ════════════════════════════════════
+//  WIN / MODALS
+// ════════════════════════════════════
+function showWin() {
+  if (G.tid) clearInterval(G.tid);
+  const e = ((Date.now()-G.t0)/1000)|0;
+  document.getElementById('w-moves').textContent = G.moves;
+  document.getElementById('w-time').textContent  = `${(e/60)|0}:${String(e%60).padStart(2,'0')}`;
+  show('win-overlay'); confetti();
+}
+
+function showNG() { if(G.tid) clearInterval(G.tid); hide('win-overlay'); show('modal-ng'); }
+function show(id) { document.getElementById(id).classList.add('on'); }
+function hide(id) { document.getElementById(id).classList.remove('on'); }
+
+// ════════════════════════════════════
+//  CHEAT FUNCTIONS
+// ════════════════════════════════════
+
+// ── Panel toggle ──
+function toggleCheatPanel() {
+  document.getElementById('cheat-panel').classList.toggle('on');
+}
+
+// Close panel when clicking outside
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('cheat-wrap');
+  if (wrap && !wrap.contains(e.target))
+    document.getElementById('cheat-panel').classList.remove('on');
+}, true);
+
+// ── X-ray ──
+function toggleXray() {
+  xray = !xray;
+  render();
+  const btn = document.getElementById('cp-xray');
+  btn.classList.toggle('active', xray);
+  btn.textContent = xray ? '👁 关闭透视' : '👁 透视牌';
+  toast(xray ? '透视模式已开启！看穿一切 👁' : '透视模式已关闭');
+}
+
+// ── Auto-play ──
+function autoSpeed() {
+  const v = parseInt(document.getElementById('speed-slider').value);
+  // v=1→600ms, v=3→300ms, v=5→80ms
+  return Math.round(600 - (v - 1) * 130);
+}
+
+function toggleAutoPlay() {
+  autoPlaying ? stopAutoPlay() : startAutoPlay();
+}
+
+function startAutoPlay() {
+  if (G.done.length === 8) return;
+  stopMega();             // stop mega if running
+  autoPlaying = true;
+  const btn = document.getElementById('cp-auto');
+  btn.classList.add('active');
+  btn.textContent = '⏹ 停止走棋';
+  toast('🤖 自动走棋已开启');
+  autoStep();
+}
+
+function stopAutoPlay() {
+  autoPlaying = false;
+  clearTimeout(autoTimer);
+  const btn = document.getElementById('cp-auto');
+  if (btn) { btn.classList.remove('active'); btn.textContent = '🤖 自动走棋'; }
+}
+
+// ── Mega: auto-deal + auto-arrange ──
+function toggleMega() {
+  megaActive ? stopMega() : startMega();
+}
+
+function startMega() {
+  if (G.done.length === 8) return;
+  stopAutoPlay();         // stop plain auto-play if running
+  megaActive = true;
+  const btn = document.getElementById('cp-mega');
+  btn.classList.add('active');
+  btn.textContent = '⏹ 停止整理';
+  toast('🃏 自动抽牌整理已开启！');
+  megaStep();
+}
+
+function stopMega() {
+  megaActive = false;
+  clearTimeout(megaTimer);
+  const btn = document.getElementById('cp-mega');
+  if (btn) { btn.classList.remove('active'); btn.textContent = '🃏 抽牌整理'; }
+}
+
+function megaStep() {
+  if (!megaActive || G.done.length === 8) { stopMega(); return; }
+
+  const mv = bestMove();
+  if (mv) {
+    // ── Make the best available move ──
+    const before = capturePositions();
+    animFlipped.clear();
+    doMove(mv.fc, mv.fi, mv.tc);
+    render();
+    animateMoveCards(before);
+    animFlipped.clear();
+    megaTimer = setTimeout(megaStep, autoSpeed());
+  } else if (G.stock.length > 0) {
+    // ── No moves: deal next group from stock ──
+    const stockEl   = document.getElementById('stock-pile');
+    const stockRect = stockEl ? stockEl.getBoundingClientRect() : null;
+    G.hist.push(snapshot());
+    const grp = G.stock.pop();
+    const ids  = [];
+    grp.forEach((card, i) => { card.faceUp = true; G.tableau[i].push(card); ids.push(card.id); });
+    G.moves++;
+    for (let c = 0; c < NCOLS; c++) checkSeq(c);
+    render();
+    if (stockRect) animateDeal(ids, stockRect);
+    // Resume moves after deal animation settles
+    megaTimer = setTimeout(megaStep, autoSpeed() + ids.length * 40 + 200);
+  } else {
+    // ── Stock empty, no moves left ──
+    stopMega();
+    if (G.done.length < 8) toast('😅 所有牌都发完了，走不下去啦！');
+  }
+}
+
+function autoStep() {
+  if (!autoPlaying || G.done.length === 8) { stopAutoPlay(); return; }
+
+  const mv = bestMove();
+  if (mv) {
+    const before = capturePositions();
+    animFlipped.clear();
+    doMove(mv.fc, mv.fi, mv.tc);
+    render();
+    animateMoveCards(before);
+    animFlipped.clear();
+    autoTimer = setTimeout(autoStep, autoSpeed());
+  } else if (G.stock.length > 0) {
+    dealStock();
+    autoTimer = setTimeout(autoStep, autoSpeed() + 200);
+  } else {
+    stopAutoPlay();
+    toast('🤖 走到这儿了，没路走了 😅');
+  }
+}
+
+// ── Extract 1-K from ALL cards (face-up, face-down, stock) ──
+
+// Preference order: face-up tableau > face-down tableau > stock.
+// Within same tier, prefer topmost card (largest ci2) for face-up.
+function findCompleteSet() {
+  const bysuit = {}; // suit → { rank → pick }
+
+  const tier = card => card.faceUp ? 2 : 1;   // tableau tiers
+  const addPick = (suit, rank, entry, t) => {
+    if (!bysuit[suit]) bysuit[suit] = {};
+    const cur = bysuit[suit][rank];
+    if (!cur || t > cur._tier || (t === cur._tier && (entry.ci2 ?? -1) > (cur.ci2 ?? -1))) {
+      bysuit[suit][rank] = { ...entry, _tier: t };
+    }
+  };
+
+  // ── Tableau (face-up AND face-down) ──
+  G.tableau.forEach((col, ci) => {
+    col.forEach((card, ci2) => {
+      addPick(card.suit, card.rank, { card, source:'tableau', ci, ci2 }, tier(card));
+    });
+  });
+
+  // ── Stock groups ──
+  G.stock.forEach((group, gi) => {
+    group.forEach((card, si) => {
+      addPick(card.suit, card.rank, { card, source:'stock', gi, si }, 0);
+    });
+  });
+
+  for (const [suit, rankMap] of Object.entries(bysuit)) {
+    if (Object.keys(rankMap).length === 13)
+      return { suit, picks: Object.values(rankMap) };
+  }
+  return null;
+}
+
+// Build a lightweight fixed-position card clone for animation
+function makeFlyer(card, x, y, zIdx) {
+  const el = document.createElement('div');
+  el.style.cssText = [
+    `position:fixed`, `left:${x}px`, `top:${y}px`,
+    `width:${CW}px`, `height:${CH}px`, `border-radius:8px`,
+    `border:1px solid rgba(0,0,0,.15)`, `background:#fff`,
+    `box-shadow:0 10px 28px rgba(0,0,0,.55),0 0 14px rgba(255,215,0,.6)`,
+    `pointer-events:none`, `z-index:${zIdx}`, `overflow:hidden`
+  ].join(';');
+  const cls = RED_SUITS.has(card.suit) ? 'red' : 'black';
+  const r   = RANK_STR[card.rank];
+  el.innerHTML = `<div class="card-inner">
+  <div class="corner"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
+  <div class="mid ${cls}">${card.suit}</div>
+  <div class="corner bot"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
+</div>`;
+  return el;
+}
+
+function extractSequence() {
+  const found = findCompleteSet();
+  if (!found) {
+    toast('全部牌中也凑不齐同花色 A→K，换一局试试！');
+    return;
+  }
+
+  const { suit, picks } = found;
+
+  // Sort A→K for visual stagger
+  const sorted = [...picks].sort((a, b) => a.card.rank - b.card.rank);
+
+  // Target: next empty completed slot
+  const slots = document.querySelectorAll('.cslot');
+  const tSlot = slots[G.done.length] || slots[slots.length - 1];
+  const tRect = (tSlot || document.getElementById('completed-piles')).getBoundingClientRect();
+
+  // Stock pile fallback rect (for stock-sourced cards)
+  const stockEl   = document.getElementById('stock-pile') ?? document.querySelector('#stock-wrap > *');
+  const stockRect = stockEl ? stockEl.getBoundingClientRect() : tRect;
+
+  // Build source info for each pick
+  const srcData = sorted.map(pick => {
+    let el   = null;
+    let rect = null;
+    let fromStock = pick.source === 'stock';
+
+    if (!fromStock) {
+      // Tableau card (face-up or face-down — both have DOM elements)
+      el   = document.querySelector(`.card[data-id="${pick.card.id}"]`);
+      rect = el ? el.getBoundingClientRect() : stockRect;
+    } else {
+      // Stock card — animate from stock pile position
+      rect = stockRect;
+    }
+    return { pick, el, rect, fromStock };
+  });
+
+  // ── Phase 1: pulse-highlight tableau cards (300 ms) ──
+  srcData.forEach(({ el }) => el?.classList.add('card-pulse'));
+
+  setTimeout(() => {
+
+    // Hide tableau originals; stock cards are already hidden inside the pile
+    srcData.forEach(({ el }) => {
+      if (el) { el.classList.remove('card-pulse'); el.classList.add('card-hidden'); }
+    });
+
+    const STAGGER  = 50;
+    const DURATION = 400;
+
+    srcData.forEach(({ pick, rect, fromStock }, i) => {
+      // Stock cards stagger their start from the pile so they appear to be drawn out
+      const extraDelay = fromStock ? i * 20 : 0;
+      const flyer = makeFlyer(pick.card, rect.left, rect.top, 500 + i);
+      document.body.appendChild(flyer);
+
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const rot   = (i - 6) * 4;
+        const delay = STAGGER * i + extraDelay;
+        flyer.style.transition = [
+          `left      ${DURATION}ms cubic-bezier(0.4,0,0.2,1) ${delay}ms`,
+          `top       ${DURATION}ms cubic-bezier(0.4,0,0.2,1) ${delay}ms`,
+          `transform ${DURATION}ms cubic-bezier(0.4,0,0.2,1) ${delay}ms`,
+          `opacity   ${Math.round(DURATION*0.6)}ms ease     ${delay + Math.round(DURATION*0.55)}ms`
+        ].join(',');
+        flyer.style.left      = tRect.left + 'px';
+        flyer.style.top       = tRect.top  + 'px';
+        flyer.style.transform = `scale(0.68) rotate(${rot}deg)`;
+        flyer.style.opacity   = '0';
+      }));
+
+      setTimeout(() => flyer.remove(), STAGGER * i + extraDelay + DURATION + 60);
+    });
+
+    // ── Phase 3: update state after last clone lands ──
+    const settle = STAGGER * srcData.length + DURATION + 100;
+    setTimeout(() => {
+      const removeIds = new Set(picks.map(p => p.card.id));
+      animFlipped.clear();
+
+      // Remove from tableau
+      for (let c = 0; c < NCOLS; c++) {
+        G.tableau[c] = G.tableau[c].filter(card => !removeIds.has(card.id));
+        flipTop(c);
+      }
+      // Remove from stock (keep non-empty groups)
+      G.stock = G.stock
+        .map(group => group.filter(card => !removeIds.has(card.id)))
+        .filter(g => g.length > 0);
+
+      G.done.push(suit);
+      G.justCompleted = true;
+      G.moves++;
+      render();
+
+      const flipped = new Set(animFlipped);
+      animFlipped.clear();
+      if (flipped.size > 0) setTimeout(() => animateFlip(flipped), 80);
+      if (G.done.length === 8) setTimeout(showWin, 600);
+    }, settle);
+
+  }, 300);
+}
+
+// ── Instant win ──
+function instantWin() {
+  stopAutoPlay();
+  G.tableau = Array.from({length: NCOLS}, () => []);
+  G.stock   = [];
+  renderTableau(); renderStock();
+
+  const suitMap = {
+    1: ['♠','♠','♠','♠','♠','♠','♠','♠'],
+    2: ['♠','♠','♠','♠','♥','♥','♥','♥'],
+    4: ['♠','♠','♥','♥','♦','♦','♣','♣']
+  };
+  const suits  = suitMap[G.numSuits];
+  const needed = 8 - G.done.length;
+
+  for (let i = 0; i < needed; i++) {
+    setTimeout(() => {
+      G.done.push(suits[G.done.length]);
+      G.justCompleted = true;
+      G.moves++;
+      renderDone(); renderStats();
+      if (G.done.length === 8) setTimeout(showWin, 500);
+    }, i * 160);
+  }
+  if (needed === 0) showWin();
+}
+
+// ════════════════════════════════════
+//  EVENT LISTENERS
+// ════════════════════════════════════
+document.getElementById('btn-cheat').addEventListener('click', e => { e.stopPropagation(); toggleCheatPanel(); });
+document.getElementById('btn-new').addEventListener('click', showNG);
+document.getElementById('btn-undo').addEventListener('click', doUndo);
+document.getElementById('btn-hint').addEventListener('click', doHint);
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key === 'z') { e.preventDefault(); doUndo(); }
+});
+
+// Responsive resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { calcDims(); render(); }, 150);
+});
+calcDims(); // initial calc before any game starts
+
+// Secret: triple-click on title opens cheat panel
+(function(){
+  let clicks = 0, timer = null;
+  document.getElementById('title').style.cursor = 'default';
+  document.getElementById('title').addEventListener('click', () => {
+    clicks++;
+    clearTimeout(timer);
+    timer = setTimeout(() => { clicks = 0; }, 700);
+    if (clicks >= 3) {
+      clicks = 0;
+      document.getElementById('cheat-panel').classList.toggle('on');
+    }
+  });
+})();
+</script>
+</body>
+</html>
