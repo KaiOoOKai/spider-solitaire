@@ -507,7 +507,7 @@ function calcDims() {
 // ════════════════════════════════════
 //  STATE
 // ════════════════════════════════════
-let G = { tableau:[], stock:[], done:[], moves:0, hist:[], numSuits:1, t0:0, tid:null, justCompleted:false, pausedAt:0 };
+let G = { tableau:[], stock:[], done:[], moves:0, hist:[], numSuits:1, t0:0, tid:null, justCompleted:false, pausedAt:0, completing:new Set() };
 
 // Win-streak (persisted) + pause state
 let streak = parseInt(localStorage.getItem('spiderStreak') || '0', 10) || 0;
@@ -564,7 +564,7 @@ function startGame(ns) {
   stopMega();
   xray = false;
   if (G.tid) clearInterval(G.tid);
-  G = { tableau:[], stock:[], done:[], moves:0, hist:[], numSuits:ns, t0:Date.now(), tid:null, justCompleted:false };
+  G = { tableau:[], stock:[], done:[], moves:0, hist:[], numSuits:ns, t0:Date.now(), tid:null, justCompleted:false, pausedAt:0, completing:new Set() };
 
   const deck = shuffle(buildDeck(ns));
   let idx = 0;
@@ -741,6 +741,8 @@ function dragStart(e, ci, ci2) {
   D = { on:true, fc:ci, fi:ci2, cards, ox:0, oy:0, startX:x, startY:y, isTouch: !!e.touches };
   const rect = e.currentTarget.getBoundingClientRect();
   D.ox = x - rect.left; D.oy = y - rect.top;
+  // On touch, lift the dragged stack above the fingertip so it isn't hidden by the finger
+  if (e.touches) D.oy += 38;
 
   buildGhost(cards); moveGhost(x, y);
   markDim(true);
@@ -770,7 +772,8 @@ function onUp(e) {
 
   const { x, y } = evtXY(e);
   const dx = x - D.startX, dy = y - D.startY;
-  const wasDrag = Math.sqrt(dx*dx + dy*dy) > 8;
+  // Touch fingers wobble more than a mouse → use a larger click/drag threshold for touch
+  const wasDrag = Math.sqrt(dx*dx + dy*dy) > (D.isTouch ? 14 : 6);
 
   // Capture current DOM positions before any state change
   const before = capturePositions();
@@ -792,6 +795,8 @@ function onUp(e) {
 
   if (moved) {
     animateMoveCards(before);
+    // After the move settles, check for any completed A→K run and play the harvest animation
+    setTimeout(() => harvestComplete(true), 330);
   }
   animFlipped.clear();
 }
@@ -873,11 +878,17 @@ function draggable(cards) {
 }
 
 function colAt(x, y) {
+  let nearest = null, nearestDist = Infinity;
   for (const c of document.querySelectorAll('.col')) {
     const r = c.getBoundingClientRect();
-    if (x >= r.left && x <= r.right && y >= r.top) return parseInt(c.dataset.col);
+    // Direct hit (allow a little above the column top so high drops still register)
+    if (x >= r.left && x <= r.right && y >= r.top - CH) return parseInt(c.dataset.col);
+    // Track horizontally-nearest column for a forgiving snap
+    const cx = (r.left + r.right) / 2, d = Math.abs(x - cx);
+    if (d < nearestDist) { nearestDist = d; nearest = parseInt(c.dataset.col); }
   }
-  return null;
+  // Snap to the closest column if the drop landed within ~1.3 card widths of it
+  return nearestDist < CW * 1.3 ? nearest : null;
 }
 
 function snapshot() {
@@ -914,23 +925,109 @@ function doMove(fc, fi, tc) {
   G.tableau[tc] = [...dst, ...mov];
   flipTop(fc);
   G.moves++;
-  checkSeq(tc);
   return true;
 }
 
-function checkSeq(ci) {
+// Is column `ci` topped by a complete K→A same-suit run?
+function isComplete(ci) {
   const col = G.tableau[ci];
-  if (col.length < 13) return;
+  if (col.length < 13) return null;
   const top13 = col.slice(-13), s = top13[0].suit;
   for (let i=0; i<13; i++) {
-    if (!top13[i].faceUp || top13[i].suit !== s || top13[i].rank !== 13-i) return;
+    if (!top13[i].faceUp || top13[i].suit !== s || top13[i].rank !== 13-i) return null;
   }
-  G.tableau[ci] = col.slice(0, -13);
-  flipTop(ci);
-  G.done.push(s);
-  G.justCompleted = true;
+  return s;
+}
+
+// Scan all columns for completed runs and remove them.
+// animated=true  → fly the 13 cards into the completed slot with confetti
+// animated=false → remove instantly (used by fast auto-play)
+function harvestComplete(animated) {
+  if (!G.completing) G.completing = new Set();
+  const completes = [];
+  for (let ci = 0; ci < NCOLS; ci++) {
+    if (G.completing.has(ci)) continue;
+    const s = isComplete(ci);
+    if (s) completes.push({ ci, suit: s });
+  }
+  if (!completes.length) return false;
+
+  if (!animated) {
+    completes.forEach(({ ci, suit }) => {
+      G.tableau[ci] = G.tableau[ci].slice(0, -13);
+      flipTop(ci);
+      G.done.push(suit);
+      G.justCompleted = true;
+    });
+    render();
+    if (G.done.length === 8) setTimeout(showWin, 400);
+    return true;
+  }
+
+  completes.forEach((c, idx) => animateComplete(c.ci, c.suit, G.done.length + idx));
+  return true;
+}
+
+// Fly the 13 completed cards from column `ci` into completed slot `baseSlot`.
+function animateComplete(ci, suit, baseSlot) {
+  if (!G.completing) G.completing = new Set();
+  G.completing.add(ci);
+
+  const cards = G.tableau[ci].slice(-13);                 // K(0) … A(12)
+  const slots = document.querySelectorAll('.cslot');
+  const tSlot = slots[baseSlot] || slots[slots.length - 1];
+  const tRect = tSlot.getBoundingClientRect();
+
+  const srcData = cards.map(card => {
+    const el = document.querySelector(`.card[data-id="${card.id}"]`);
+    return { card, el, rect: el ? el.getBoundingClientRect() : tRect };
+  });
+
+  // Phase 1: golden pulse on the run
+  srcData.forEach(({ el }) => el && el.classList.add('card-pulse'));
   flashCol(ci);
-  if (G.done.length === 8) setTimeout(showWin, 600);
+
+  setTimeout(() => {
+    // Phase 2: hide originals, launch staggered flyers toward the slot
+    srcData.forEach(({ el }) => { if (el) { el.classList.remove('card-pulse'); el.classList.add('card-hidden'); } });
+
+    const STAGGER = 42, DURATION = 440;
+    srcData.forEach(({ card, rect }, i) => {
+      const flyer = makeFlyer(card, rect.left, rect.top, 600 + i);
+      document.body.appendChild(flyer);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const rot = (i - 6) * 5, delay = STAGGER * i;
+        flyer.style.transition = [
+          `left      ${DURATION}ms cubic-bezier(.34,.6,.3,1) ${delay}ms`,
+          `top       ${DURATION}ms cubic-bezier(.34,.6,.3,1) ${delay}ms`,
+          `transform ${DURATION}ms cubic-bezier(.34,.6,.3,1) ${delay}ms`,
+          `opacity   ${Math.round(DURATION*0.5)}ms ease ${delay + Math.round(DURATION*0.55)}ms`
+        ].join(',');
+        flyer.style.left      = tRect.left + 'px';
+        flyer.style.top       = tRect.top  + 'px';
+        flyer.style.transform = `scale(.64) rotate(${rot}deg)`;
+        flyer.style.opacity   = '0';
+      }));
+      setTimeout(() => flyer.remove(), STAGGER * i + DURATION + 120);
+    });
+
+    // Phase 3: commit state once the last flyer lands → confetti celebration
+    setTimeout(() => {
+      const ids = new Set(cards.map(c => c.id));
+      animFlipped.clear();
+      G.completing.delete(ci);
+      G.tableau[ci] = G.tableau[ci].filter(c => !ids.has(c.id));
+      flipTop(ci);
+      G.done.push(suit);
+      G.justCompleted = true;
+      render();
+      confetti();
+      const flipped = new Set(animFlipped);
+      animFlipped.clear();
+      if (G.done.length === 8) setTimeout(showWin, 500);
+    }, STAGGER * 13 + DURATION + 60);
+
+  }, 240);
 }
 
 // ════════════════════════════════════
@@ -950,10 +1047,11 @@ function dealStock() {
     dealtIds.push(card.id);
   });
   G.moves++;
-  for (let c=0; c<NCOLS; c++) checkSeq(c);
 
   render();
   if (stockRect) animateDeal(dealtIds, stockRect);
+  // After the deal animation settles, harvest any newly completed runs
+  setTimeout(() => harvestComplete(true), 760);
 }
 
 // ════════════════════════════════════
@@ -1226,6 +1324,7 @@ function megaStep() {
     render();
     animateMoveCards(before);
     animFlipped.clear();
+    harvestComplete(false);
     megaTimer = setTimeout(megaStep, autoSpeed());
   } else if (G.stock.length > 0) {
     // ── No moves: deal next group from stock ──
@@ -1236,8 +1335,8 @@ function megaStep() {
     const ids  = [];
     grp.forEach((card, i) => { card.faceUp = true; G.tableau[i].push(card); ids.push(card.id); });
     G.moves++;
-    for (let c = 0; c < NCOLS; c++) checkSeq(c);
     render();
+    harvestComplete(false);
     if (stockRect) animateDeal(ids, stockRect);
     // Resume moves after deal animation settles
     megaTimer = setTimeout(megaStep, autoSpeed() + ids.length * 40 + 200);
@@ -1259,6 +1358,7 @@ function autoStep() {
     render();
     animateMoveCards(before);
     animFlipped.clear();
+    harvestComplete(false);
     autoTimer = setTimeout(autoStep, autoSpeed());
   } else if (G.stock.length > 0) {
     dealStock();
