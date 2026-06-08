@@ -622,7 +622,9 @@ function tick() {
 //  DRAG  (mouse + touch)
 // ════════════════════════════════════
 function evtXY(e) {
-  const t = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
+  const t = (e.touches && e.touches.length)             ? e.touches[0]
+          : (e.changedTouches && e.changedTouches.length) ? e.changedTouches[0]
+          : e;
   return { x: t.clientX, y: t.clientY };
 }
 
