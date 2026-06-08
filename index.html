@@ -147,13 +147,12 @@ body {
 /* Cards that cannot be moved (face-down or face-up but blocked) */
 .card.locked-card { opacity: 0.45; }
 
-/* Card internals */
-.card-inner { width:100%; height:100%; display:flex; flex-direction:column; padding:4px 5px; }
+/* Card internals — only a top corner now (no bottom mirror) */
+.card-inner { width:100%; height:100%; display:flex; flex-direction:column; padding:4px 6px; }
 .corner { display:flex; flex-direction:column; line-height:1; }
-.corner.bot { margin-top:auto; transform:rotate(180deg); align-self:flex-end; }
-.rk  { font-size:16px; font-weight:700; line-height:1; }
-.su  { font-size:13px; line-height:1; }
-.mid { flex:1; display:flex; align-items:center; justify-content:center; font-size:38px; }
+.rk  { font-size:20px; font-weight:800; line-height:1; }
+.su  { font-size:16px; line-height:1; }
+.mid { flex:1; display:flex; align-items:center; justify-content:center; font-size:42px; }
 .red   { color: #cc0000; }
 .black { color: #111; }
 
@@ -380,10 +379,10 @@ body.paused #tableau { filter: blur(7px); pointer-events: none; }
   #stock-pile .sicon { font-size: 22px; }
   #stock-pile .scnt  { font-size: 10px; }
 
-  .rk  { font-size: 11px; }
-  .su  { font-size: 8px; }
-  .mid { font-size: 22px; }
-  .card-inner { padding: 2px 3px; }
+  .rk  { font-size: 15px; }
+  .su  { font-size: 11px; }
+  .mid { font-size: 26px; }
+  .card-inner { padding: 2px 4px; }
 
   .modal-box  { padding: 24px 20px; min-width: unset; margin: 0 16px; }
   .modal-box h2 { font-size: 22px; }
@@ -496,8 +495,8 @@ function calcDims() {
   const gap  = isMobile ? 3 : 6;
   CW = Math.min(80, Math.max(28, Math.floor((avail - (NCOLS - 1) * gap) / NCOLS)));
   CH = Math.round(CW * 1.4);
-  FD_OFF = Math.max(6,  Math.round(CW * 0.22));
-  FU_OFF = Math.max(12, Math.round(CW * 0.34));
+  FD_OFF = Math.max(7,  Math.round(CW * 0.24));
+  FU_OFF = Math.max(18, Math.round(CW * 0.46));
   const root = document.documentElement.style;
   root.setProperty('--cw', CW + 'px');
   root.setProperty('--ch', CH + 'px');
@@ -657,9 +656,7 @@ function makeCard(card, ci, ci2, top) {
     const r   = RANK_STR[card.rank];
     el.innerHTML = `<div class="card-inner">
   <div class="corner"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
-  <div class="mid ${cls}">${card.suit}</div>
-  <div class="corner bot"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
-</div>`;
+  <div class="mid ${cls}">${card.suit}</div></div>`;
     if (card.faceUp) {
       el.addEventListener('mousedown',  e => dragStart(e, ci, ci2));
       el.addEventListener('touchstart', e => dragStart(e, ci, ci2), { passive: false });
@@ -845,9 +842,7 @@ function buildGhost(cards) {
     const r   = RANK_STR[card.rank];
     el.innerHTML = `<div class="card-inner">
   <div class="corner"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
-  <div class="mid ${cls}">${card.suit}</div>
-  <div class="corner bot"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
-</div>`;
+  <div class="mid ${cls}">${card.suit}</div></div>`;
     g.appendChild(el);
   });
   g.style.cssText = `position:fixed;pointer-events:none;z-index:9999;display:block;width:${CW}px;height:${(cards.length-1)*FU_OFF+CH}px;`;
@@ -1420,9 +1415,7 @@ function makeFlyer(card, x, y, zIdx) {
   const r   = RANK_STR[card.rank];
   el.innerHTML = `<div class="card-inner">
   <div class="corner"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
-  <div class="mid ${cls}">${card.suit}</div>
-  <div class="corner bot"><div class="rk ${cls}">${r}</div><div class="su ${cls}">${card.suit}</div></div>
-</div>`;
+  <div class="mid ${cls}">${card.suit}</div></div>`;
   return el;
 }
 
