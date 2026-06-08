@@ -184,12 +184,11 @@ body {
   margin-top: 14px; padding: 0 20px 0 2px; min-width: 830px;
 }
 
-/* ── COMPLETED ROW (bottom) ── */
+/* ── COMPLETED ROW (centred, lower-middle of the board) ── */
 #completed-row {
   display: flex; justify-content: center; align-items: center;
-  margin-top: 18px; padding: 12px 0 14px;
+  margin-top: 16vh; padding: 10px 0;
   min-width: 830px;
-  border-top: 1px solid rgba(255,255,255,0.1);
 }
 #completed-piles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .cslot {
@@ -373,7 +372,7 @@ body.paused #tableau { filter: blur(7px); pointer-events: none; }
   .tb-txt   { font-size: 11px; letter-spacing: .5px; }
   .tb-sep   { margin: 8px 0; }
   #stock-row  { min-width: unset; margin-top: 8px; padding-right: 18px; }
-  #completed-row { min-width: unset; margin-top: 10px; padding: 8px 0 10px; }
+  #completed-row { min-width: unset; margin-top: 13vh; padding: 8px 0; }
   #completed-piles { gap: 4px; }
   .cslot.done { font-size: 28px; }
   #stock-pile .sicon { font-size: 22px; }
@@ -424,11 +423,11 @@ body.paused #tableau { filter: blur(7px); pointer-events: none; }
 
 <div id="game-area">
   <div id="tableau"></div>
-  <div id="completed-row">
-    <div id="completed-piles"></div>
-  </div>
   <div id="stock-row">
     <div id="stock-wrap"><div id="stock-empty"></div></div>
+  </div>
+  <div id="completed-row">
+    <div id="completed-piles"></div>
   </div>
 </div>
 
@@ -561,6 +560,7 @@ function startGame(ns) {
   calcDims();
   stopAutoPlay();
   stopMega();
+  autoFinishing = false;
   xray = false;
   if (G.tid) clearInterval(G.tid);
   G = { tableau:[], stock:[], done:[], moves:0, hist:[], numSuits:ns, t0:Date.now(), tid:null, justCompleted:false, pausedAt:0, completing:new Set() };
@@ -792,8 +792,8 @@ function onUp(e) {
 
   if (moved) {
     animateMoveCards(before);
-    // After the move settles, check for any completed A→K run and play the harvest animation
-    setTimeout(() => harvestComplete(true), 330);
+    // After the move settles: harvest any completed run, else check for auto-finish
+    setTimeout(() => { if (!harvestComplete(true)) maybeAutoFinish(); }, 330);
   }
   animFlipped.clear();
 }
@@ -1016,13 +1016,55 @@ function animateComplete(ci, suit, baseSlot) {
       G.done.push(suit);
       G.justCompleted = true;
       render();
-      confetti();
-      const flipped = new Set(animFlipped);
       animFlipped.clear();
       if (G.done.length === 8) setTimeout(showWin, 500);
+      else maybeAutoFinish();
     }, STAGGER * 13 + DURATION + 60);
 
   }, 240);
+}
+
+// ════════════════════════════════════
+//  AUTO-FINISH  (all cards exposed → finish with animated moves)
+// ════════════════════════════════════
+let autoFinishing = false;
+
+function allExposed() {
+  if (G.stock.length > 0) return false;
+  if (G.completing && G.completing.size > 0) return false;
+  for (const col of G.tableau)
+    for (const c of col)
+      if (!c.faceUp) return false;
+  return true;
+}
+
+function maybeAutoFinish() {
+  if (autoFinishing || G.done.length >= 8) return;
+  if (!allExposed()) return;
+  autoFinishing = true;
+  toast('✨ 全部翻开，自动完成中…');
+  setTimeout(autoFinishStep, 260);
+}
+
+function autoFinishStep() {
+  if (G.done.length >= 8) { autoFinishing = false; return; }
+
+  // First clear any complete K→A run (animated), then continue after it lands
+  if (harvestComplete(true)) { setTimeout(autoFinishStep, 1350); return; }
+
+  const mv = bestMove();
+  if (mv) {
+    const before = capturePositions();
+    animFlipped.clear();
+    doMove(mv.fc, mv.fi, mv.tc);
+    render();
+    animateMoveCards(before);
+    animFlipped.clear();
+    setTimeout(autoFinishStep, 300);
+  } else {
+    autoFinishing = false;
+    if (G.done.length < 8) toast('还差几步，手动整理一下吧～');
+  }
 }
 
 // ════════════════════════════════════
@@ -1045,8 +1087,8 @@ function dealStock() {
 
   render();
   if (stockRect) animateDeal(dealtIds, stockRect);
-  // After the deal animation settles, harvest any newly completed runs
-  setTimeout(() => harvestComplete(true), 760);
+  // After the deal settles: harvest completed runs, else check for auto-finish
+  setTimeout(() => { if (!harvestComplete(true)) maybeAutoFinish(); }, 760);
 }
 
 // ════════════════════════════════════
