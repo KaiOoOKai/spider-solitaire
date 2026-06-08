@@ -19,17 +19,37 @@ body {
 
 /* ── HEADER ── */
 #header {
-  background: rgba(0,0,0,0.4);
-  padding: 8px 16px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4); flex-wrap: wrap;
+  background: rgba(0,0,0,0.32);
+  padding: 8px 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;
 }
-#title { color: #FFD700; font-size: 20px; font-weight: bold; white-space: nowrap; }
-#stats { display: flex; gap: 20px; color: white; font-size: 13px; }
-.stat-item { display: flex; flex-direction: column; align-items: center; }
-.stat-label { opacity: .65; font-size: 10px; text-transform: uppercase; }
-.stat-value { font-weight: 700; font-size: 17px; }
-#controls { display: flex; gap: 8px; font-family: '微软雅黑', 'Microsoft YaHei', sans-serif; }
+#theme-btn {
+  font-size: 24px; cursor: pointer; line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); user-select: none;
+  transition: transform .12s;
+}
+#theme-btn:active { transform: scale(.9); }
+#stats {
+  display: flex; gap: 16px; color: #fff; align-items: center;
+  flex: 1; justify-content: center;
+}
+.stat-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.stat-ico    { font-size: 15px; }
+.stat-value  { font-weight: 800; font-size: 17px; }
+.stat-suffix { font-size: 12px; opacity: .85; }
+.stat-item.streak .stat-value { color: #ffd24a; font-size: 19px; }
+.stat-item.streak .stat-suffix { color: #ffd24a; }
+#controls { display: flex; gap: 8px; align-items: center; }
+.hbtn {
+  width: 38px; height: 38px; border: none; border-radius: 50%;
+  background: rgba(255,255,255,.14); color: #fff; font-size: 18px;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  transition: background .15s, transform .12s;
+}
+.hbtn:hover  { background: rgba(255,255,255,.26); }
+.hbtn:active { transform: scale(.92); }
 
 .btn {
   padding: 6px 14px; border: none; border-radius: 6px;
@@ -88,7 +108,7 @@ body {
 }
 
 /* ── GAME ── */
-#game-area { padding: 10px 12px; overflow-x: auto; overflow-y: auto; }
+#game-area { padding: 10px 12px 110px; overflow-x: auto; overflow-y: auto; }
 #tableau   { display: flex; gap: var(--tab-gap); align-items: flex-start; min-width: 830px; }
 
 /* ── COLUMNS ── */
@@ -107,12 +127,18 @@ body {
   will-change: transform;
 }
 .card.face-down {
-  background: #1a3a8c;
+  background-color: #c23030;
   background-image:
-    repeating-linear-gradient(45deg,  transparent, transparent 4px, rgba(255,255,255,.04) 4px, rgba(255,255,255,.04) 8px),
-    repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(255,255,255,.04) 4px, rgba(255,255,255,.04) 8px);
+    linear-gradient(135deg, #e76a6a 25%, transparent 25%),
+    linear-gradient(225deg, #e76a6a 25%, transparent 25%),
+    linear-gradient(45deg,  #e76a6a 25%, transparent 25%),
+    linear-gradient(315deg, #e76a6a 25%, #c23030 25%);
+  background-position: 7px 0, 7px 0, 0 0, 0 0;
+  background-size: 14px 14px;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
-.card.face-up { background: #fff; cursor: grab; }
+.card.face-up { background: #fff; cursor: grab; border: 2px solid #fff; }
 .card.face-up:active { cursor: grabbing; }
 .card.dim        { opacity: .3; pointer-events: none; }
 .card.glow       { box-shadow: 0 0 0 3px #ffd700, 0 4px 14px rgba(0,0,0,.5); }
@@ -156,7 +182,7 @@ body {
 /* ── STOCK ROW ── */
 #stock-row {
   display: flex; justify-content: flex-end; align-items: center;
-  margin-top: 14px; padding: 0 2px; min-width: 830px;
+  margin-top: 14px; padding: 0 20px 0 2px; min-width: 830px;
 }
 
 /* ── COMPLETED ROW (bottom) ── */
@@ -181,19 +207,77 @@ body {
 /* ── STOCK ── */
 #stock-wrap { position: relative; }
 #stock-pile {
-  width: var(--cw); height: var(--ch); border-radius: 8px; cursor: pointer;
-  background: #1a3a8c;
-  background-image: repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,.04) 4px,rgba(255,255,255,.04) 8px);
-  border: 2px solid rgba(255,255,255,.25);
-  box-shadow: 0 3px 8px rgba(0,0,0,.4);
+  position: relative;
+  width: var(--cw); height: var(--ch); border-radius: 10px; cursor: pointer;
+  background-color: #c23030;
+  background-image:
+    linear-gradient(135deg, #e76a6a 25%, transparent 25%),
+    linear-gradient(225deg, #e76a6a 25%, transparent 25%),
+    linear-gradient(45deg,  #e76a6a 25%, transparent 25%),
+    linear-gradient(315deg, #e76a6a 25%, #c23030 25%);
+  background-position: 7px 0, 7px 0, 0 0, 0 0;
+  background-size: 14px 14px;
+  border: 2px solid #fff;
+  /* stacked-cards illusion behind the pile */
+  box-shadow:
+    5px 5px 0 -2px #a82626, 5px 5px 0 0 #fff,
+    10px 10px 0 -2px #8f2020, 10px 10px 0 0 #fff,
+    0 4px 12px rgba(0,0,0,.45);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  transition: border-color .15s, box-shadow .15s;
+  transition: transform .12s, filter .15s;
   touch-action: manipulation;
 }
-#stock-pile:hover { border-color: rgba(255,215,0,.7); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
-#stock-pile .sicon { font-size: 30px; }
-#stock-pile .scnt  { color: rgba(255,255,255,.85); font-size: 12px; font-weight: 700; }
+#stock-pile:hover  { filter: brightness(1.08); }
+#stock-pile:active { transform: scale(.95); }
+#stock-pile .sicon { font-size: calc(var(--cw) * 0.4); filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+#stock-pile .scnt  {
+  position: absolute; bottom: 3px; right: 4px;
+  color: #fff; font-size: 11px; font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0,0,0,.7);
+}
 #stock-empty { width: var(--cw); height: var(--ch); border: 2px dashed rgba(255,255,255,.12); border-radius: 8px; }
+
+/* ── BOTTOM TOOLBAR ── */
+#toolbar {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  display: flex; align-items: stretch;
+  background: rgba(12,28,20,0.94);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px; padding: 8px 6px; gap: 2px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+  z-index: 90;
+  font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;
+}
+.tb-btn {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-width: 72px; padding: 4px 10px;
+  background: none; border: none; cursor: pointer;
+  color: #fff; transition: transform .12s, filter .12s;
+  touch-action: manipulation;
+}
+.tb-btn:hover  { filter: brightness(1.2); }
+.tb-btn:active { transform: scale(.9); }
+.tb-ico { font-size: 26px; line-height: 1; }
+.tb-txt { font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+.tb-sep { width: 1px; background: rgba(255,255,255,0.14); margin: 6px 0; }
+.tb-badge {
+  position: absolute; top: -2px; right: 8px;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  background: #ff3b30; color: #fff; border-radius: 9px;
+  font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.tb-badge.hide { display: none; }
+
+/* ── PAUSE ── */
+#pause-box {
+  background: linear-gradient(160deg,#1e6b38,#2d8a4e);
+  border-radius: 16px; padding: 32px 44px; color: #fff; text-align: center;
+  box-shadow: 0 16px 48px rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.15);
+}
+#pause-box h2 { font-size: 26px; margin-top: 6px; }
+body.paused #tableau { filter: blur(7px); pointer-events: none; }
 
 /* ── DRAG GHOST ── */
 #ghost { position: fixed; pointer-events: none; z-index: 9999; display: none; }
@@ -271,19 +355,25 @@ body {
 
 /* ── MOBILE ── */
 @media (max-width: 600px) {
-  #header { padding: 6px 10px; gap: 6px; flex-wrap: wrap; }
-  #title  { font-size: 15px; }
-  #stats  { gap: 10px; }
-  .stat-value { font-size: 14px; }
-  .stat-label { font-size: 9px; }
+  #header { padding: 6px 10px; gap: 6px; }
+  #theme-btn { font-size: 20px; }
+  #stats  { gap: 11px; }
+  .stat-value { font-size: 15px; }
+  .stat-ico   { font-size: 13px; }
+  .stat-suffix { font-size: 10px; }
+  .stat-item.streak .stat-value { font-size: 16px; }
   #controls { gap: 5px; }
-  .btn        { padding: 5px 9px; font-size: 12px; }
-  .btn-icon   { gap: 3px; padding: 5px 8px; }
-  .btn-icon svg { width: 13px; height: 13px; }
+  .hbtn { width: 32px; height: 32px; font-size: 15px; }
 
-  #game-area  { padding: 6px 6px; }
+  #game-area  { padding: 6px 6px 96px; }
   #tableau    { min-width: unset; }
-  #stock-row  { min-width: unset; margin-top: 8px; }
+
+  #toolbar  { bottom: 8px; padding: 6px 3px; border-radius: 14px; }
+  .tb-btn   { min-width: 58px; padding: 3px 4px; gap: 2px; }
+  .tb-ico   { font-size: 22px; }
+  .tb-txt   { font-size: 11px; letter-spacing: .5px; }
+  .tb-sep   { margin: 8px 0; }
+  #stock-row  { min-width: unset; margin-top: 8px; padding-right: 18px; }
   #completed-row { min-width: unset; margin-top: 10px; padding: 8px 0 10px; }
   #completed-piles { gap: 4px; }
   .cslot.done { font-size: 28px; }
@@ -307,14 +397,14 @@ body {
 <body>
 
 <div id="header">
-  <div id="title">🕷 蜘蛛纸牌</div>
+  <div id="theme-btn" title="🕷 蜘蛛纸牌">🎨</div>
   <div id="stats">
-    <div class="stat-item"><span class="stat-label">移动</span><span class="stat-value" id="s-moves">0</span></div>
-    <div class="stat-item"><span class="stat-label">完成</span><span class="stat-value" id="s-done">0/8</span></div>
-    <div class="stat-item"><span class="stat-label">时间</span><span class="stat-value" id="s-time">00:00</span></div>
+    <div class="stat-item"><span class="stat-ico">⏰</span><span class="stat-value" id="s-time">00:00</span></div>
+    <div class="stat-item streak"><span class="stat-value" id="s-streak">0</span><span class="stat-suffix">连胜</span></div>
+    <div class="stat-item"><span class="stat-ico">👣</span><span class="stat-value" id="s-moves">0</span><span class="stat-suffix">步</span></div>
   </div>
   <div id="controls">
-    <button class="btn btn-wand btn-icon" id="btn-wand" onclick="extractSequence()" title="魔棒：抽出同花色 A→K">🪄 魔棒</button>
+    <button class="hbtn" id="btn-new" title="新游戏">🔄</button>
     <div id="cheat-wrap">
       <button class="btn btn-cheat" id="btn-cheat">💀 作弊</button>
       <div id="cheat-panel">
@@ -330,30 +420,34 @@ body {
         <button class="cp-btn" id="cp-win"   onclick="instantWin()">🏆 直接胜利</button>
       </div>
     </div>
-    <button class="btn btn-blue   btn-icon" id="btn-hint" title="提示">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z"/>
-      </svg>
-      提示
-    </button>
-    <button class="btn btn-orange btn-icon" id="btn-undo" title="撤回">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 9h13a5 5 0 0 1 0 10H8"/>
-        <polyline points="7 5 3 9 7 13"/>
-      </svg>
-      撤回
-    </button>
-    <button class="btn btn-green"  id="btn-new" >新游戏</button>
   </div>
 </div>
 
 <div id="game-area">
   <div id="tableau"></div>
+  <div id="completed-row">
+    <div id="completed-piles"></div>
+  </div>
   <div id="stock-row">
     <div id="stock-wrap"><div id="stock-empty"></div></div>
   </div>
-  <div id="completed-row">
-    <div id="completed-piles"></div>
+</div>
+
+<div id="toolbar">
+  <button class="tb-btn" id="btn-pause"><span class="tb-ico">⏸️</span><span class="tb-txt">暂停</span></button>
+  <span class="tb-sep"></span>
+  <button class="tb-btn" id="btn-wand" onclick="extractSequence()"><span class="tb-ico">✨</span><span class="tb-txt">魔棒</span></button>
+  <span class="tb-sep"></span>
+  <button class="tb-btn" id="btn-hint"><span class="tb-ico">🔔</span><span class="tb-txt">提示</span></button>
+  <span class="tb-sep"></span>
+  <button class="tb-btn" id="btn-undo"><span class="tb-ico">↩️</span><span class="tb-txt">撤回</span><span class="tb-badge" id="undo-badge">0</span></button>
+</div>
+
+<div class="overlay" id="pause-overlay">
+  <div id="pause-box">
+    <div style="font-size:54px">⏸️</div>
+    <h2>已暂停</h2>
+    <button class="btn btn-green" style="font-size:16px;padding:12px 30px;margin-top:14px" onclick="togglePause()">继续游戏</button>
   </div>
 </div>
 
@@ -413,7 +507,11 @@ function calcDims() {
 // ════════════════════════════════════
 //  STATE
 // ════════════════════════════════════
-let G = { tableau:[], stock:[], done:[], moves:0, hist:[], numSuits:1, t0:0, tid:null, justCompleted:false };
+let G = { tableau:[], stock:[], done:[], moves:0, hist:[], numSuits:1, t0:0, tid:null, justCompleted:false, pausedAt:0 };
+
+// Win-streak (persisted) + pause state
+let streak = parseInt(localStorage.getItem('spiderStreak') || '0', 10) || 0;
+let paused = false;
 
 // ════════════════════════════════════
 //  DRAG
@@ -576,7 +674,7 @@ function renderStock() {
   const w = document.getElementById('stock-wrap'); w.innerHTML = '';
   if (G.stock.length > 0) {
     const p = document.createElement('div'); p.id = 'stock-pile';
-    p.innerHTML = `<span class="sicon">🂠</span><span class="scnt">${G.stock.length*10} 张</span>`;
+    p.innerHTML = `<span class="sicon">🕷️</span><span class="scnt">${G.stock.length*10}</span>`;
     p.addEventListener('click', dealStock);
     w.appendChild(p);
   } else {
@@ -605,8 +703,13 @@ function renderDone() {
 }
 
 function renderStats() {
-  document.getElementById('s-moves').textContent = G.moves;
-  document.getElementById('s-done').textContent  = G.done.length + '/8';
+  document.getElementById('s-moves').textContent  = G.moves;
+  document.getElementById('s-streak').textContent = streak;
+  const badge = document.getElementById('undo-badge');
+  if (badge) {
+    badge.textContent = G.hist.length;
+    badge.classList.toggle('hide', G.hist.length === 0);
+  }
 }
 
 // ════════════════════════════════════
@@ -1006,6 +1109,9 @@ function toast(msg) {
 // ════════════════════════════════════
 function showWin() {
   if (G.tid) clearInterval(G.tid);
+  streak++;
+  localStorage.setItem('spiderStreak', streak);
+  renderStats();
   const e = ((Date.now()-G.t0)/1000)|0;
   document.getElementById('w-moves').textContent = G.moves;
   document.getElementById('w-time').textContent  = `${(e/60)|0}:${String(e%60).padStart(2,'0')}`;
@@ -1013,6 +1119,20 @@ function showWin() {
 }
 
 function showNG() { if(G.tid) clearInterval(G.tid); hide('win-overlay'); show('modal-ng'); }
+
+// ── Pause ──
+function togglePause() {
+  paused = !paused;
+  document.body.classList.toggle('paused', paused);
+  document.getElementById('pause-overlay').classList.toggle('on', paused);
+  if (paused) {
+    if (G.tid) { clearInterval(G.tid); G.tid = null; }
+    G.pausedAt = Date.now();
+  } else {
+    if (G.pausedAt) { G.t0 += Date.now() - G.pausedAt; G.pausedAt = 0; }
+    if (!G.tid) G.tid = setInterval(tick, 1000);
+  }
+}
 function show(id) { document.getElementById(id).classList.add('on'); }
 function hide(id) { document.getElementById(id).classList.remove('on'); }
 
@@ -1345,6 +1465,7 @@ document.getElementById('btn-cheat').addEventListener('click', e => { e.stopProp
 document.getElementById('btn-new').addEventListener('click', showNG);
 document.getElementById('btn-undo').addEventListener('click', doUndo);
 document.getElementById('btn-hint').addEventListener('click', doHint);
+document.getElementById('btn-pause').addEventListener('click', togglePause);
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.key === 'z') { e.preventDefault(); doUndo(); }
 });
@@ -1357,11 +1478,10 @@ window.addEventListener('resize', () => {
 });
 calcDims(); // initial calc before any game starts
 
-// Secret: triple-click on title opens cheat panel
+// Secret: triple-click on theme icon opens cheat panel
 (function(){
   let clicks = 0, timer = null;
-  document.getElementById('title').style.cursor = 'default';
-  document.getElementById('title').addEventListener('click', () => {
+  document.getElementById('theme-btn').addEventListener('click', () => {
     clicks++;
     clearTimeout(timer);
     timer = setTimeout(() => { clicks = 0; }, 700);
